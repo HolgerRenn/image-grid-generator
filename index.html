@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Grid Generator</title>
+  <style>
+    :root{
+      color-scheme: dark;
+      --bg:#0f1115;
+      --panel:#171a20;
+      --panel2:#20242d;
+      --text:#f6f8fc;
+      --muted:#aab1be;
+      --accent:#ff4f87;
+      --border:#353b47;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:linear-gradient(160deg,#0e1014,#171b23);
+      color:var(--text);
+    }
+    .app{
+      width:min(1320px,calc(100% - 28px));
+      margin:0 auto;
+      padding:28px 0 40px;
+    }
+    h1{
+      margin:0 0 8px;
+      font-size:clamp(1.9rem,4vw,3rem);
+      letter-spacing:-0.04em;
+    }
+    .subtitle{
+      margin:0 0 22px;
+      color:var(--muted);
+    }
+    .layout{
+      display:grid;
+      grid-template-columns:360px 1fr;
+      gap:22px;
+      align-items:start;
+    }
+    .panel{
+      background:rgba(23,26,32,.94);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 18px 50px rgba(0,0,0,.28);
+      backdrop-filter:blur(10px);
+    }
+    .controls{
+      display:grid;
+      gap:16px;
+      max-height:calc(100vh - 80px);
+      overflow:auto;
+    }
+    .group{
+      display:grid;
+      gap:12px;
+      padding:14px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:rgba(255,255,255,.02);
+    }
+    .group h2{
+      margin:0;
+      font-size:1rem;
+    }
+    .field{
+      display:grid;
+      gap:7px;
+    }
+    label{
+      font-size:.9rem;
+      font-weight:650;
+      color:var(--muted);
+    }
+    input[type="file"],
+    input[type="range"],
+    input[type="color"],
+    select,
+    button{
+      width:100%;
+    }
+    input[type="file"]{
+      padding:11px;
+      background:var(--panel2);
+      border:1px dashed var(--border);
+      border-radius:12px;
+      color:var(--text);
+    }
+    input[type="range"]{
+      accent-color:var(--accent);
+    }
+    select{
+      background:var(--panel2);
+      border:1px solid var(--border);
+      border-radius:10px;
+      color:var(--text);
+      padding:10px 12px;
+      font:inherit;
+    }
+    input[type="color"]{
+      height:42px;
+      border:1px solid var(--border);
+      background:var(--panel2);
+      border-radius:10px;
+      padding:3px;
+    }
+    .inline{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      align-items:center;
+    }
+    .check{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:var(--text);
+      font-size:.95rem;
+    }
+    .check input{
+      width:18px;
+      height:18px;
+      accent-color:var(--accent);
+    }
+    .value{
+      color:var(--text);
+      font-variant-numeric:tabular-nums;
+      text-align:right;
+    }
+    .buttons{
+      display:grid;
+      gap:10px;
+    }
+    button{
+      border:0;
+      border-radius:12px;
+      padding:12px 14px;
+      font:inherit;
+      font-weight:750;
+      cursor:pointer;
+      transition:transform .14s ease,opacity .14s ease,background .14s ease;
+    }
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0)}
+    .primary{
+      background:var(--accent);
+      color:#fff;
+    }
+    .secondary{
+      background:var(--panel2);
+      color:var(--text);
+      border:1px solid var(--border);
+    }
+    .status{
+      min-height:1.4em;
+      color:var(--muted);
+      font-size:.88rem;
+      line-height:1.45;
+    }
+    .hint{
+      color:var(--muted);
+      font-size:.84rem;
+      line-height:1.45;
+    }
+    .stage-wrap{
+      overflow:auto;
+      background:
+        linear-gradient(45deg,#17191f 25%,transparent 25%),
+        linear-gradient(-45deg,#17191f 25%,transparent 25%),
+        linear-gradient(45deg,transparent 75%,#17191f 75%),
+        linear-gradient(-45deg,transparent 75%,#17191f 75%);
+      background-size:24px 24px;
+      background-position:0 0,0 12px,12px -12px,-12px 0;
+    }
+    canvas{
+      display:block;
+      max-width:100%;
+      height:auto;
+      margin:auto;
+      border-radius:10px;
+      background:#0b0c0f;
+      box-shadow:0 12px 35px rgba(0,0,0,.35);
+      touch-action:none;
+      cursor:grab;
+    }
+    canvas.dragging{cursor:grabbing}
+    @media (max-width:980px){
+      .layout{grid-template-columns:1fr}
+      .controls{max-height:none}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>Image Grid Generator</h1>
+    <p class="subtitle">Raster frei wählbar von 2×2 bis 10×10. Bild kann verschoben, gezoomt und gedreht werden.</p>
+
+    <section class="layout">
+      <aside class="panel controls">
+
+        <div class="group">
+          <h2>Bild</h2>
+
+          <div class="field">
+            <label for="imageInput">Bild auswählen</label>
+            <input id="imageInput" type="file" accept="image/*" />
+          </div>
+
+          <div class="field">
+            <label for="canvasFormat">Bildformat / Seitenverhältnis</label>
+            <select id="canvasFormat">
+              <option value="1200x1200">1:1 Quadrat</option>
+              <option value="1200x1500">4:5 Hochformat</option>
+              <option value="1200x1600">3:4 Hochformat</option>
+              <option value="1080x1920">9:16 Story</option>
+              <option value="1600x900">16:9 Querformat</option>
+              <option value="1600x1200">4:3 Querformat</option>
+              <option value="1414x2000">A4 Hochformat</option>
+              <option value="2000x1414">A4 Querformat</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="imageZoom">Zoom <span id="imageZoomValue" class="value">100 %</span></label>
+            <input id="imageZoom" type="range" min="10" max="400" value="100" />
+          </div>
+
+          <div class="field">
+            <label for="imageRotation">Drehung <span id="imageRotationValue" class="value">0°</span></label>
+            <input id="imageRotation" type="range" min="-180" max="180" value="0" />
+          </div>
+
+          <div class="field">
+            <label for="imageOffsetX">Bild X <span id="imageOffsetXValue" class="value">0 px</span></label>
+            <input id="imageOffsetX" type="range" min="-1200" max="1200" value="0" />
+          </div>
+
+          <div class="field">
+            <label for="imageOffsetY">Bild Y <span id="imageOffsetYValue" class="value">0 px</span></label>
+            <input id="imageOffsetY" type="range" min="-1200" max="1200" value="0" />
+          </div>
+
+          <div class="field">
+            <label for="dragMode">Maussteuerung</label>
+            <select id="dragMode">
+              <option value="grid">Raster verschieben / skalieren</option>
+              <option value="image">Bild verschieben</option>
+            </select>
+          </div>
+
+          <div class="hint">
+            Im Canvas kannst du je nach Modus entweder das Raster ziehen bzw. unten rechts skalieren oder das Bild direkt verschieben.
+          </div>
+        </div>
+
+        <div class="group">
+          <h2>Raster</h2>
+
+          <div class="field">
+            <label for="gridSize">Rastergröße</label>
+            <select id="gridSize">
+              <option value="2">2 × 2</option>
+              <option value="3">3 × 3</option>
+              <option value="4">4 × 4</option>
+              <option value="5">5 × 5</option>
+              <option value="6">6 × 6</option>
+              <option value="7">7 × 7</option>
+              <option value="8">8 × 8</option>
+              <option value="9">9 × 9</option>
+              <option value="10" selected>10 × 10</option>
+            </select>
+          </div>
+
+          <div class="inline">
+            <div class="field">
+              <label for="lineColor">Linienfarbe</label>
+              <input id="lineColor" type="color" value="#000000" />
+            </div>
+            <div class="field">
+              <label for="fillColor">Feldfarbe</label>
+              <input id="fillColor" type="color" value="#ffffff" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="lineOpacity">Linien- & Zahlen-Deckkraft <span id="lineOpacityValue" class="value">100 %</span></label>
+            <input id="lineOpacity" type="range" min="0" max="100" value="100" />
+          </div>
+
+          <div class="field">
+            <label for="fillOpacity">Feld-Deckkraft <span id="fillOpacityValue" class="value">45 %</span></label>
+            <input id="fillOpacity" type="range" min="0" max="100" value="45" />
+          </div>
+
+          <div class="field">
+            <label for="lineWidth">Linienstärke <span id="lineWidthValue" class="value">2 px</span></label>
+            <input id="lineWidth" type="range" min="1" max="10" value="2" />
+          </div>
+
+          <div class="field">
+            <label for="cellSize">Feldgröße <span id="cellSizeValue" class="value">90 px</span></label>
+            <input id="cellSize" type="range" min="30" max="220" value="90" />
+          </div>
+
+          <div class="field">
+            <label for="gridX">Raster X <span id="gridXValue" class="value">150 px</span></label>
+            <input id="gridX" type="range" min="0" max="2000" value="150" />
+          </div>
+
+          <div class="field">
+            <label for="gridY">Raster Y <span id="gridYValue" class="value">150 px</span></label>
+            <input id="gridY" type="range" min="0" max="2000" value="150" />
+          </div>
+        </div>
+
+        <div class="group">
+          <h2>Beschriftung</h2>
+
+          <div class="field">
+            <label for="labelSize">Schriftgröße <span id="labelSizeValue" class="value">22 px</span></label>
+            <input id="labelSize" type="range" min="10" max="48" value="22" />
+          </div>
+
+          <div class="field">
+            <label for="labelColor">Zahlenfarbe</label>
+            <input id="labelColor" type="color" value="#ffffff" />
+          </div>
+
+          <label class="check">
+            <input id="showLabels" type="checkbox" checked />
+            Zahlen anzeigen
+          </label>
+
+          <label class="check">
+            <input id="darkLabels" type="checkbox" />
+            Dunklen Hintergrund hinter Zahlen anzeigen
+          </label>
+        </div>
+
+        <div class="group">
+          <h2>Aktionen</h2>
+          <div class="buttons">
+            <button id="resetImageButton" class="secondary" type="button">Bild zurücksetzen</button>
+            <button id="centerGridButton" class="secondary" type="button">Raster zentrieren</button>
+            <button id="downloadButton" class="primary" type="button">Als PNG herunterladen</button>
+            <button id="downloadSetButton" class="secondary" type="button">Set herunterladen</button>
+          </div>
+          <div id="status" class="status">Noch kein Bild geladen.</div>
+        </div>
+      </aside>
+
+      <section class="panel stage-wrap">
+        <canvas id="canvas" width="1200" height="1200" aria-label="Image Grid Canvas"></canvas>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const MIN_CELL_SIZE = 30;
+      const MAX_CELL_SIZE = 220;
+      const HANDLE_SIZE = 26;
+
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const imageInput = document.getElementById('imageInput');
+      const canvasFormat = document.getElementById('canvasFormat');
+      const imageZoom = document.getElementById('imageZoom');
+      const imageRotation = document.getElementById('imageRotation');
+      const imageOffsetX = document.getElementById('imageOffsetX');
+      const imageOffsetY = document.getElementById('imageOffsetY');
+      const dragMode = document.getElementById('dragMode');
+
+      const gridSize = document.getElementById('gridSize');
+      const lineColor = document.getElementById('lineColor');
+      const fillColor = document.getElementById('fillColor');
+      const lineOpacity = document.getElementById('lineOpacity');
+      const fillOpacity = document.getElementById('fillOpacity');
+      const lineWidth = document.getElementById('lineWidth');
+      const cellSize = document.getElementById('cellSize');
+      const gridX = document.getElementById('gridX');
+      const gridY = document.getElementById('gridY');
+
+      const labelSize = document.getElementById('labelSize');
+      const labelColor = document.getElementById('labelColor');
+      const showLabels = document.getElementById('showLabels');
+      const darkLabels = document.getElementById('darkLabels');
+
+      const resetImageButton = document.getElementById('resetImageButton');
+      const centerGridButton = document.getElementById('centerGridButton');
+      const downloadButton = document.getElementById('downloadButton');
+      const downloadSetButton = document.getElementById('downloadSetButton');
+      const status = document.getElementById('status');
+
+      const valueEls = {
+        imageZoomValue: document.getElementById('imageZoomValue'),
+        imageRotationValue: document.getElementById('imageRotationValue'),
+        imageOffsetXValue: document.getElementById('imageOffsetXValue'),
+        imageOffsetYValue: document.getElementById('imageOffsetYValue'),
+        lineOpacityValue: document.getElementById('lineOpacityValue'),
+        fillOpacityValue: document.getElementById('fillOpacityValue'),
+        lineWidthValue: document.getElementById('lineWidthValue'),
+        cellSizeValue: document.getElementById('cellSizeValue'),
+        gridXValue: document.getElementById('gridXValue'),
+        gridYValue: document.getElementById('gridYValue'),
+        labelSizeValue: document.getElementById('labelSizeValue')
+      };
+
+      const image = new Image();
+      let hasImage = false;
+
+      const state = {
+        canvasWidth: 1200,
+        canvasHeight: 1200,
+
+        imageScale: 1,
+        imageRotation: 0,
+        imageOffsetX: 0,
+        imageOffsetY: 0,
+        baseImageScale: 1,
+
+        gridSize: Number(gridSize.value),
+        gridX: Number(gridX.value),
+        gridY: Number(gridY.value),
+        cellSize: Number(cellSize.value),
+
+        dragging: null,
+        dragStartX: 0,
+        dragStartY: 0,
+        startGridX: 0,
+        startGridY: 0,
+        startCellSize: 0,
+        startImageOffsetX: 0,
+        startImageOffsetY: 0
+      };
+
+      function gw() { return state.gridSize * state.cellSize; }
+      function cw() { return state.canvasWidth; }
+      function ch() { return state.canvasHeight; }
+
+      function updateCanvasElement() {
+        canvas.width = cw();
+        canvas.height = ch();
+      }
+
+      function updateRangeLimits() {
+        const margin = Math.max(cw(), ch());
+        imageOffsetX.min = -margin;
+        imageOffsetX.max = margin;
+        imageOffsetY.min = -margin;
+        imageOffsetY.max = margin;
+
+        gridX.max = Math.max(cw(), 0);
+        gridY.max = Math.max(ch(), 0);
+      }
+
+      function updateReadouts() {
+        valueEls.imageZoomValue.textContent = `${Math.round(state.imageScale * 100)} %`;
+        valueEls.imageRotationValue.textContent = `${Math.round(state.imageRotation)}°`;
+        valueEls.imageOffsetXValue.textContent = `${Math.round(state.imageOffsetX)} px`;
+        valueEls.imageOffsetYValue.textContent = `${Math.round(state.imageOffsetY)} px`;
+        valueEls.lineOpacityValue.textContent = `${lineOpacity.value} %`;
+        valueEls.fillOpacityValue.textContent = `${fillOpacity.value} %`;
+        valueEls.lineWidthValue.textContent = `${lineWidth.value} px`;
+        valueEls.cellSizeValue.textContent = `${Math.round(state.cellSize)} px`;
+        valueEls.gridXValue.textContent = `${Math.round(state.gridX)} px`;
+        valueEls.gridYValue.textContent = `${Math.round(state.gridY)} px`;
+        valueEls.labelSizeValue.textContent = `${labelSize.value} px`;
+
+        imageZoom.value = Math.round(state.imageScale * 100);
+        imageRotation.value = Math.round(state.imageRotation);
+        imageOffsetX.value = Math.round(state.imageOffsetX);
+        imageOffsetY.value = Math.round(state.imageOffsetY);
+        gridSize.value = String(state.gridSize);
+        cellSize.value = Math.round(state.cellSize);
+        gridX.value = Math.round(state.gridX);
+        gridY.value = Math.round(state.gridY);
+      }
+
+      function hexToRgb(hex) {
+        const clean = hex.replace('#', '');
+        return {
+          r: parseInt(clean.slice(0, 2), 16),
+          g: parseInt(clean.slice(2, 4), 16),
+          b: parseInt(clean.slice(4, 6), 16)
+        };
+      }
+
+      function rgbaFromHex(hex, alpha) {
+        const rgb = hexToRgb(hex);
+        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+      }
+
+      function drawPlaceholder() {
+        const gradient = ctx.createLinearGradient(0, 0, cw(), ch());
+        gradient.addColorStop(0, '#141721');
+        gradient.addColorStop(1, '#242836');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, cw(), ch());
+
+        const titleSize = Math.max(34, Math.min(cw(), ch()) * 0.045);
+        const subSize = Math.max(22, Math.min(cw(), ch()) * 0.025);
+
+        ctx.fillStyle = '#e8ebf2';
+        ctx.font = `700 ${titleSize}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Bild auswählen', cw() / 2, ch() / 2 - titleSize * 0.6);
+
+        ctx.fillStyle = '#9fa6b5';
+        ctx.font = `${subSize}px system-ui, sans-serif`;
+        ctx.fillText(`${state.gridSize} × ${state.gridSize} · ${state.gridSize * state.gridSize} Felder`, cw() / 2, ch() / 2 + subSize * 0.9);
+      }
+
+      function resetImageTransform() {
+        state.imageScale = 1;
+        state.imageRotation = 0;
+        state.imageOffsetX = 0;
+        state.imageOffsetY = 0;
+        updateReadouts();
+      }
+
+      function fitImageBaseScale() {
+        if (!hasImage) return;
+        state.baseImageScale = Math.min(cw() / image.width, ch() / image.height);
+      }
+
+      function drawImageLayer() {
+        ctx.fillStyle = '#0b0c0f';
+        ctx.fillRect(0, 0, cw(), ch());
+        if (!hasImage) return;
+
+        const finalScale = state.baseImageScale * state.imageScale;
+        const drawWidth = image.width * finalScale;
+        const drawHeight = image.height * finalScale;
+
+        ctx.save();
+        ctx.translate(cw() / 2 + state.imageOffsetX, ch() / 2 + state.imageOffsetY);
+        ctx.rotate(state.imageRotation * Math.PI / 180);
+        ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        ctx.restore();
+      }
+
+      function drawGrid(includeHandle = true) {
+        const gx = state.gridX;
+        const gy = state.gridY;
+        const cs = state.cellSize;
+        const count = state.gridSize;
+        const total = count * cs;
+
+        ctx.save();
+
+        ctx.fillStyle = rgbaFromHex(fillColor.value, Number(fillOpacity.value) / 100);
+        for (let row = 0; row < count; row++) {
+          for (let col = 0; col < count; col++) {
+            ctx.fillRect(gx + col * cs, gy + row * cs, cs, cs);
+          }
+        }
+
+        const sharedLineLabelOpacity = Number(lineOpacity.value) / 100;
+        ctx.strokeStyle = rgbaFromHex(lineColor.value, sharedLineLabelOpacity);
+        ctx.lineWidth = Number(lineWidth.value);
+
+        for (let i = 0; i <= count; i++) {
+          const p = i * cs;
+          ctx.beginPath();
+          ctx.moveTo(gx + p, gy);
+          ctx.lineTo(gx + p, gy + total);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(gx, gy + p);
+          ctx.lineTo(gx + total, gy + p);
+          ctx.stroke();
+        }
+
+        if (showLabels.checked) {
+          const size = Number(labelSize.value);
+          ctx.font = `500 ${size}px system-ui, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          for (let row = 0; row < count; row++) {
+            for (let col = 0; col < count; col++) {
+              const num = row * count + col + 1;
+              const cx = gx + col * cs + cs / 2;
+              const cy = gy + row * cs + cs / 2;
+
+              if (darkLabels.checked) {
+                const metrics = ctx.measureText(String(num));
+                const rectW = metrics.width + 12;
+                const rectH = size + 10;
+                ctx.fillStyle = 'rgba(0,0,0,.55)';
+                ctx.fillRect(cx - rectW / 2, cy - rectH / 2, rectW, rectH);
+              }
+
+              ctx.lineWidth = Math.max(1, size / 14);
+              ctx.strokeStyle = `rgba(0,0,0,${Math.max(0.15, sharedLineLabelOpacity * 0.7)})`;
+              ctx.strokeText(String(num), cx, cy);
+              ctx.fillStyle = rgbaFromHex(labelColor.value, sharedLineLabelOpacity);
+              ctx.fillText(String(num), cx, cy);
+            }
+          }
+        }
+
+        if (includeHandle) {
+          const hx = gx + total - HANDLE_SIZE;
+          const hy = gy + total - HANDLE_SIZE;
+          ctx.fillStyle = 'rgba(255,255,255,.88)';
+          ctx.fillRect(hx, hy, HANDLE_SIZE, HANDLE_SIZE);
+          ctx.strokeStyle = 'rgba(0,0,0,.75)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(hx, hy, HANDLE_SIZE, HANDLE_SIZE);
+
+          ctx.beginPath();
+          ctx.moveTo(hx + 7, hy + HANDLE_SIZE - 7);
+          ctx.lineTo(hx + HANDLE_SIZE - 7, hy + 7);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(hx + 13, hy + HANDLE_SIZE - 7);
+          ctx.lineTo(hx + HANDLE_SIZE - 7, hy + 13);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function render(includeHandle = true) {
+        ctx.clearRect(0, 0, cw(), ch());
+        if (hasImage) drawImageLayer();
+        else drawPlaceholder();
+        drawGrid(includeHandle);
+      }
+
+      function clampGridPosition() {
+        const total = gw();
+        state.gridX = Math.max(0, Math.min(state.gridX, Math.max(0, cw() - total)));
+        state.gridY = Math.max(0, Math.min(state.gridY, Math.max(0, ch() - total)));
+      }
+
+      function centerGrid() {
+        const total = gw();
+        state.gridX = Math.max(0, (cw() - total) / 2);
+        state.gridY = Math.max(0, (ch() - total) / 2);
+        clampGridPosition();
+        updateReadouts();
+        render();
+      }
+
+      function applyCanvasFormat(centerAfter = false) {
+        const [w, h] = canvasFormat.value.split('x').map(Number);
+        state.canvasWidth = w;
+        state.canvasHeight = h;
+        updateCanvasElement();
+        updateRangeLimits();
+        fitImageBaseScale();
+        if (centerAfter) {
+          centerGrid();
+        } else {
+          clampGridPosition();
+          updateReadouts();
+          render();
+        }
+      }
+
+      function pointFromEvent(event) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (event.clientX - rect.left) * scaleX,
+          y: (event.clientY - rect.top) * scaleY
+        };
+      }
+
+      function isInsideResizeHandle(x, y) {
+        const total = gw();
+        const hx = state.gridX + total - HANDLE_SIZE;
+        const hy = state.gridY + total - HANDLE_SIZE;
+        return x >= hx && x <= hx + HANDLE_SIZE && y >= hy && y <= hy + HANDLE_SIZE;
+      }
+
+      function isInsideGrid(x, y) {
+        const total = gw();
+        return x >= state.gridX && x <= state.gridX + total && y >= state.gridY && y <= state.gridY + total;
+      }
+
+      function beginDrag(event) {
+        const p = pointFromEvent(event);
+        state.dragStartX = p.x;
+        state.dragStartY = p.y;
+
+        if (dragMode.value === 'image') {
+          state.dragging = 'image';
+          state.startImageOffsetX = state.imageOffsetX;
+          state.startImageOffsetY = state.imageOffsetY;
+        } else {
+          if (isInsideResizeHandle(p.x, p.y)) {
+            state.dragging = 'resize-grid';
+            state.startCellSize = state.cellSize;
+          } else if (isInsideGrid(p.x, p.y)) {
+            state.dragging = 'move-grid';
+            state.startGridX = state.gridX;
+            state.startGridY = state.gridY;
+          } else {
+            state.dragging = null;
+          }
+        }
+
+        if (state.dragging) {
+          canvas.classList.add('dragging');
+          event.preventDefault();
+        }
+      }
+
+      function duringDrag(event) {
+        if (!state.dragging) return;
+        const p = pointFromEvent(event);
+        const dx = p.x - state.dragStartX;
+        const dy = p.y - state.dragStartY;
+
+        if (state.dragging === 'move-grid') {
+          state.gridX = state.startGridX + dx;
+          state.gridY = state.startGridY + dy;
+          clampGridPosition();
+        } else if (state.dragging === 'resize-grid') {
+          const delta = Math.max(dx, dy);
+          state.cellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, state.startCellSize + delta / state.gridSize));
+          clampGridPosition();
+        } else if (state.dragging === 'image') {
+          const margin = Math.max(cw(), ch());
+          state.imageOffsetX = Math.max(-margin, Math.min(margin, state.startImageOffsetX + dx));
+          state.imageOffsetY = Math.max(-margin, Math.min(margin, state.startImageOffsetY + dy));
+        }
+
+        updateReadouts();
+        render();
+        event.preventDefault();
+      }
+
+      function endDrag() {
+        state.dragging = null;
+        canvas.classList.remove('dragging');
+      }
+
+      function downloadCanvas(filename) {
+        return new Promise((resolve, reject) => {
+          render(false);
+          canvas.toBlob(blob => {
+            render(true);
+            if (!blob) {
+              reject(new Error('PNG konnte nicht erzeugt werden.'));
+              return;
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 500);
+            resolve();
+          }, 'image/png');
+        });
+      }
+
+      imageInput.addEventListener('change', (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+          status.textContent = 'Bitte eine gültige Bilddatei auswählen.';
+          return;
+        }
+
+        const url = URL.createObjectURL(file);
+        image.onload = () => {
+          hasImage = true;
+          fitImageBaseScale();
+          resetImageTransform();
+          status.textContent = `${file.name} geladen · ${image.naturalWidth} × ${image.naturalHeight} px`;
+          render();
+          URL.revokeObjectURL(url);
+        };
+        image.onerror = () => {
+          status.textContent = 'Das Bild konnte nicht geladen werden.';
+          URL.revokeObjectURL(url);
+        };
+        image.src = url;
+      });
+
+      canvasFormat.addEventListener('change', () => {
+        applyCanvasFormat(true);
+        status.textContent = `Bildformat gewechselt: ${canvasFormat.options[canvasFormat.selectedIndex].text}`;
+      });
+
+      gridSize.addEventListener('change', () => {
+        state.gridSize = Number(gridSize.value);
+        clampGridPosition();
+        updateReadouts();
+        render();
+        status.textContent = `Rastergröße gewechselt: ${state.gridSize} × ${state.gridSize}`;
+      });
+
+      imageZoom.addEventListener('input', () => {
+        state.imageScale = Number(imageZoom.value) / 100;
+        updateReadouts();
+        render();
+      });
+
+      imageRotation.addEventListener('input', () => {
+        state.imageRotation = Number(imageRotation.value);
+        updateReadouts();
+        render();
+      });
+
+      imageOffsetX.addEventListener('input', () => {
+        state.imageOffsetX = Number(imageOffsetX.value);
+        updateReadouts();
+        render();
+      });
+
+      imageOffsetY.addEventListener('input', () => {
+        state.imageOffsetY = Number(imageOffsetY.value);
+        updateReadouts();
+        render();
+      });
+
+      cellSize.addEventListener('input', () => {
+        state.cellSize = Number(cellSize.value);
+        clampGridPosition();
+        updateReadouts();
+        render();
+      });
+
+      gridX.addEventListener('input', () => {
+        state.gridX = Number(gridX.value);
+        clampGridPosition();
+        updateReadouts();
+        render();
+      });
+
+      gridY.addEventListener('input', () => {
+        state.gridY = Number(gridY.value);
+        clampGridPosition();
+        updateReadouts();
+        render();
+      });
+
+      [lineColor, fillColor, lineOpacity, fillOpacity, lineWidth, labelSize, labelColor, showLabels, darkLabels]
+        .forEach(el => el.addEventListener('input', () => {
+          updateReadouts();
+          render();
+        }));
+
+      resetImageButton.addEventListener('click', () => {
+        resetImageTransform();
+        render();
+      });
+
+      centerGridButton.addEventListener('click', centerGrid);
+
+      downloadButton.addEventListener('click', async () => {
+        if (!hasImage) {
+          status.textContent = 'Bitte zuerst ein Bild laden.';
+          return;
+        }
+
+        try {
+          await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}.png`);
+          status.textContent = 'PNG wurde erstellt.';
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+
+      downloadSetButton.addEventListener('click', async () => {
+        if (!hasImage) {
+          status.textContent = 'Bitte zuerst ein Bild laden.';
+          return;
+        }
+
+        const originalFillOpacity = fillOpacity.value;
+        const originalLineOpacity = lineOpacity.value;
+        const originalLabelColor = labelColor.value;
+
+        try {
+          status.textContent = 'Set wird erstellt...';
+
+          fillOpacity.value = '100';
+          lineOpacity.value = '100';
+          labelColor.value = '#000000';
+          updateReadouts();
+          render();
+          await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}-100.png`);
+
+          await new Promise(resolve => setTimeout(resolve, 150));
+
+          fillOpacity.value = '0';
+          lineOpacity.value = '30';
+          labelColor.value = '#ffffff';
+          updateReadouts();
+          render();
+          await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}-0.png`);
+
+          status.textContent = 'Set mit 100 % und 0 % Feld-Deckkraft wurde erstellt.';
+        } catch (error) {
+          status.textContent = error.message;
+        } finally {
+          fillOpacity.value = originalFillOpacity;
+          lineOpacity.value = originalLineOpacity;
+          labelColor.value = originalLabelColor;
+          updateReadouts();
+          render();
+        }
+      });
+
+      canvas.addEventListener('pointerdown', beginDrag);
+      window.addEventListener('pointermove', duringDrag);
+      window.addEventListener('pointerup', endDrag);
+      window.addEventListener('pointercancel', endDrag);
+
+      updateCanvasElement();
+      updateRangeLimits();
+      updateReadouts();
+      centerGrid();
+      render();
+    })();
+  </script>
+</body>
+</html>
