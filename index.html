@@ -1,1124 +1,385 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Grid Generator</title>
-  <style>
-    :root{
-      color-scheme: dark;
-      --bg:#0f1115;
-      --panel:#171a20;
-      --panel2:#20242d;
-      --text:#f6f8fc;
-      --muted:#aab1be;
-      --accent:#ff4f87;
-      --border:#353b47;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:linear-gradient(160deg,#0e1014,#171b23);
-      color:var(--text);
-    }
-    .app{
-      width:min(1320px,calc(100% - 28px));
-      margin:0 auto;
-      padding:28px 0 40px;
-    }
-    h1{
-      margin:0 0 8px;
-      font-size:clamp(1.9rem,4vw,3rem);
-      letter-spacing:-0.04em;
-    }
-    .subtitle{
-      margin:0 0 22px;
-      color:var(--muted);
-    }
-    .layout{
-      display:grid;
-      grid-template-columns:360px 1fr;
-      gap:22px;
-      align-items:start;
-    }
-    .panel{
-      background:rgba(23,26,32,.94);
-      border:1px solid var(--border);
-      border-radius:18px;
-      padding:18px;
-      box-shadow:0 18px 50px rgba(0,0,0,.28);
-      backdrop-filter:blur(10px);
-    }
-    .controls{
-      display:grid;
-      gap:16px;
-      max-height:calc(100vh - 80px);
-      overflow:auto;
-    }
-    .group{
-      display:grid;
-      gap:12px;
-      padding:14px;
-      border:1px solid var(--border);
-      border-radius:14px;
-      background:rgba(255,255,255,.02);
-    }
-    .group h2{
-      margin:0;
-      font-size:1rem;
-    }
-    .field{
-      display:grid;
-      gap:7px;
-    }
-    label{
-      font-size:.9rem;
-      font-weight:650;
-      color:var(--muted);
-    }
-    input[type="file"],
-    input[type="range"],
-    input[type="color"],
-    select,
-    button{
-      width:100%;
-    }
-    input[type="file"]{
-      padding:11px;
-      background:var(--panel2);
-      border:1px dashed var(--border);
-      border-radius:12px;
-      color:var(--text);
-    }
-    input[type="range"]{
-      accent-color:var(--accent);
-    }
-    select{
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:10px;
-      color:var(--text);
-      padding:10px 12px;
-      font:inherit;
-    }
-    input[type="color"]{
-      height:42px;
-      border:1px solid var(--border);
-      background:var(--panel2);
-      border-radius:10px;
-      padding:3px;
-    }
-    .inline{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-      align-items:center;
-    }
-    .check{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      color:var(--text);
-      font-size:.95rem;
-    }
-    .check input{
-      width:18px;
-      height:18px;
-      accent-color:var(--accent);
-    }
-    .value{
-      color:var(--text);
-      font-variant-numeric:tabular-nums;
-      text-align:right;
-    }
-    .buttons{
-      display:grid;
-      gap:10px;
-    }
-    button{
-      border:0;
-      border-radius:12px;
-      padding:12px 14px;
-      font:inherit;
-      font-weight:750;
-      cursor:pointer;
-      transition:transform .14s ease,opacity .14s ease,background .14s ease;
-    }
-    button:hover{transform:translateY(-1px)}
-    button:active{transform:translateY(0)}
-    .primary{
-      background:var(--accent);
-      color:#fff;
-    }
-    .secondary{
-      background:var(--panel2);
-      color:var(--text);
-      border:1px solid var(--border);
-    }
-    .status{
-      min-height:1.4em;
-      color:var(--muted);
-      font-size:.88rem;
-      line-height:1.45;
-    }
-    .hint{
-      color:var(--muted);
-      font-size:.84rem;
-      line-height:1.45;
-    }
-    .stage-wrap{
-      overflow:auto;
-      background:
-        linear-gradient(45deg,#17191f 25%,transparent 25%),
-        linear-gradient(-45deg,#17191f 25%,transparent 25%),
-        linear-gradient(45deg,transparent 75%,#17191f 75%),
-        linear-gradient(-45deg,transparent 75%,#17191f 75%);
-      background-size:24px 24px;
-      background-position:0 0,0 12px,12px -12px,-12px 0;
-    }
-    canvas{
-      display:block;
-      max-width:100%;
-      height:auto;
-      margin:auto;
-      border-radius:10px;
-      background:#0b0c0f;
-      box-shadow:0 12px 35px rgba(0,0,0,.35);
-      touch-action:none;
-      cursor:grab;
-    }
-    canvas.dragging{cursor:grabbing}
-
-    .mobile-toolbar{
-      display:none;
-    }
-    .mobile-mode-button.active{
-      background:var(--accent);
-      color:#fff;
-      border-color:transparent;
-    }
-    @media (max-width:980px){
-      body{padding-bottom:86px}
-      .app{
-        width:min(100% - 16px,1320px);
-        padding-top:12px;
-      }
-      h1{font-size:1.55rem}
-      .subtitle{
-        margin-bottom:12px;
-        font-size:.9rem;
-      }
-      .layout{
-        display:flex;
-        flex-direction:column;
-        gap:12px;
-      }
-      .stage-wrap{
-        order:1;
-        padding:8px;
-        position:sticky;
-        top:0;
-        z-index:5;
-        max-height:62vh;
-      }
-      canvas{
-        max-height:58vh;
-        width:auto;
-        max-width:100%;
-      }
-      .controls{
-        order:2;
-        max-height:none;
-        overflow:visible;
-        padding:10px;
-      }
-      .group{
-        padding:12px;
-      }
-      input[type="range"]{
-        min-height:34px;
-        touch-action:pan-y;
-      }
-      body.mobile-ranges-locked input[type="range"]{
-        pointer-events:none;
-        opacity:.42;
-      }
-      body.mobile-ranges-locked .field:has(input[type="range"]) label::after{
-        content:"  · gesperrt";
-        font-size:.78rem;
-        font-weight:500;
-        color:var(--accent);
-      }
-      select,
-      input[type="file"],
-      button{
-        min-height:48px;
-        font-size:16px;
-      }
-      .mobile-toolbar{
-        display:grid;
-        grid-template-columns:1fr 1fr .75fr .75fr .9fr .9fr;
-        gap:6px;
-        position:fixed;
-        left:8px;
-        right:8px;
-        bottom:8px;
-        z-index:50;
-        padding:8px;
-        border:1px solid var(--border);
-        border-radius:16px;
-        background:rgba(23,26,32,.97);
-        box-shadow:0 12px 32px rgba(0,0,0,.45);
-        backdrop-filter:blur(12px);
-      }
-      .mobile-toolbar button{
-        min-height:50px;
-        padding:8px 5px;
-        font-size:.82rem;
-        line-height:1.1;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Grid Generator</title>
+<style>
+:root{color-scheme:dark;--bg:#101217;--panel:#191c23;--panel2:#232832;--text:#f5f7fb;--muted:#abb2bf;--accent:#ff4f87;--border:#39404c}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0e1014,#181c25);color:var(--text);font-family:Inter,system-ui,sans-serif;padding-bottom:84px}
+.app{width:min(1280px,calc(100% - 24px));margin:auto;padding:22px 0 36px}
+h1{margin:0 0 6px;font-size:clamp(1.7rem,4vw,2.7rem)}
+.subtitle{margin:0 0 18px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+.panel,.group{background:rgba(25,28,35,.96);border:1px solid var(--border);border-radius:16px}
+.controls{padding:14px;display:grid;gap:14px}
+.group{padding:14px;display:grid;gap:12px}
+.group h2{margin:0;font-size:1rem}
+.field{display:grid;gap:7px}
+label{font-size:.9rem;font-weight:650;color:var(--muted)}
+input[type=file],select,button{width:100%;min-height:46px;border-radius:11px;font:inherit}
+input[type=file],select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:10px}
+input[type=range]{width:100%;accent-color:var(--accent);touch-action:pan-y}
+button{border:0;font-weight:750;cursor:pointer}
+.primary{background:var(--accent);color:#fff}
+.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.mode-buttons,.buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.mode-buttons button.active{background:var(--accent);color:#fff;border-color:transparent}
+.hint,.status{color:var(--muted);font-size:.84rem;line-height:1.4}
+.stage{padding:10px;overflow:auto;background:#11141a;position:sticky;top:0}
+canvas{display:block;max-width:100%;height:auto;margin:auto;background:#0b0c0f;border-radius:10px;touch-action:none;cursor:grab}
+canvas.dragging{cursor:grabbing}
+details summary{cursor:pointer;font-weight:750}
+details[open] summary{margin-bottom:12px}
+.advanced-grid{display:grid;gap:12px}
+.inline{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;align-items:center;gap:9px;color:var(--text)}
+.check input{width:18px;height:18px}
+.mobile-toolbar{display:none}
+@media(max-width:900px){
+  .app{width:calc(100% - 12px);padding-top:8px}
+  h1{font-size:1.45rem}.subtitle{font-size:.88rem;margin-bottom:10px}
+  .layout{display:flex;flex-direction:column;gap:10px}
+  .stage{order:1;width:100%;max-height:62vh;z-index:5}
+  canvas{max-height:58vh}
+  .controls{order:2;width:100%}
+  .mobile-toolbar{display:grid;grid-template-columns:1fr 1fr .7fr .7fr .9fr .9fr;gap:6px;position:fixed;left:6px;right:6px;bottom:6px;z-index:50;padding:7px;background:rgba(25,28,35,.98);border:1px solid var(--border);border-radius:15px}
+  .mobile-toolbar button{min-height:48px;font-size:.8rem;padding:6px}
+  .mobile-toolbar .active{background:var(--accent);color:#fff}
+}
+</style>
 </head>
 <body>
-  <main class="app">
-    <h1>Image Grid Generator</h1>
-    <p class="subtitle">Raster frei wählbar von 2×2 bis 10×10. Bild kann verschoben, gezoomt und gedreht werden.</p>
+<main class="app">
+  <h1>Image Grid Generator</h1>
+  <p class="subtitle">Bild ausrichten, Raster platzieren und als Set exportieren.</p>
 
-    <section class="layout">
-      <aside class="panel controls">
-
-        <div class="group">
-          <h2>Bild</h2>
-
-          <div class="field">
-            <label for="imageInput">Bild auswählen</label>
-            <input id="imageInput" type="file" accept="image/*" />
-          </div>
-
-          <div class="field">
-            <label for="canvasFormat">Bildformat / Seitenverhältnis</label>
-            <select id="canvasFormat">
-              <option value="1200x1200">1:1 Quadrat</option>
-              <option value="1200x1500">4:5 Hochformat</option>
-              <option value="1200x1600">3:4 Hochformat</option>
-              <option value="1080x1920">9:16 Story</option>
-              <option value="1600x900">16:9 Querformat</option>
-              <option value="1600x1200">4:3 Querformat</option>
-              <option value="1414x2000">A4 Hochformat</option>
-              <option value="2000x1414">A4 Querformat</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="imageZoom">Zoom <span id="imageZoomValue" class="value">100 %</span></label>
-            <input id="imageZoom" type="range" min="10" max="400" value="100" />
-          </div>
-
-          <div class="field">
-            <label for="imageRotation">Drehung <span id="imageRotationValue" class="value">0°</span></label>
-            <input id="imageRotation" type="range" min="-180" max="180" value="0" />
-          </div>
-
-          <div class="field">
-            <label for="imageOffsetX">Bild X <span id="imageOffsetXValue" class="value">0 px</span></label>
-            <input id="imageOffsetX" type="range" min="-1200" max="1200" value="0" />
-          </div>
-
-          <div class="field">
-            <label for="imageOffsetY">Bild Y <span id="imageOffsetYValue" class="value">0 px</span></label>
-            <input id="imageOffsetY" type="range" min="-1200" max="1200" value="0" />
-          </div>
-
-          <div class="field">
-            <label for="dragMode">Maussteuerung</label>
-            <select id="dragMode">
-              <option value="grid">Raster verschieben / skalieren</option>
-              <option value="image">Bild verschieben</option>
-            </select>
-          </div>
-
-          <label class="check" id="mobileRangeLockRow">
-            <input id="mobileRangeLock" type="checkbox" />
-            Schieberegler auf Mobilgeräten sperren
-          </label>
-
-          <div class="hint">
-            Im Canvas kannst du je nach Modus entweder das Raster ziehen bzw. unten rechts skalieren oder das Bild direkt verschieben.
-          </div>
+  <section class="layout">
+    <aside class="panel controls">
+      <section class="group">
+        <h2>Bild</h2>
+        <div class="field">
+          <label for="imageInput">Bild auswählen</label>
+          <input id="imageInput" type="file" accept="image/*">
         </div>
-
-        <div class="group">
-          <h2>Raster</h2>
-
-          <div class="field">
-            <label for="gridSize">Rastergröße</label>
-            <select id="gridSize">
-              <option value="2">2 × 2</option>
-              <option value="3">3 × 3</option>
-              <option value="4">4 × 4</option>
-              <option value="5">5 × 5</option>
-              <option value="6">6 × 6</option>
-              <option value="7">7 × 7</option>
-              <option value="8">8 × 8</option>
-              <option value="9">9 × 9</option>
-              <option value="10" selected>10 × 10</option>
-            </select>
-          </div>
-
-          <div class="inline">
-            <div class="field">
-              <label for="lineColor">Linienfarbe</label>
-              <input id="lineColor" type="color" value="#000000" />
-            </div>
-            <div class="field">
-              <label for="fillColor">Feldfarbe</label>
-              <input id="fillColor" type="color" value="#ffffff" />
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="lineOpacity">Linien- & Zahlen-Deckkraft <span id="lineOpacityValue" class="value">100 %</span></label>
-            <input id="lineOpacity" type="range" min="0" max="100" value="100" />
-          </div>
-
-          <div class="field">
-            <label for="fillOpacity">Feld-Deckkraft <span id="fillOpacityValue" class="value">45 %</span></label>
-            <input id="fillOpacity" type="range" min="0" max="100" value="45" />
-          </div>
-
-          <div class="field">
-            <label for="lineWidth">Linienstärke <span id="lineWidthValue" class="value">2 px</span></label>
-            <input id="lineWidth" type="range" min="1" max="10" value="2" />
-          </div>
-
-          <div class="field">
-            <label for="cellSize">Feldgröße <span id="cellSizeValue" class="value">90 px</span></label>
-            <input id="cellSize" type="range" min="30" max="220" value="90" />
-          </div>
-
-          <div class="field">
-            <label for="gridX">Raster X <span id="gridXValue" class="value">150 px</span></label>
-            <input id="gridX" type="range" min="0" max="2000" value="150" />
-          </div>
-
-          <div class="field">
-            <label for="gridY">Raster Y <span id="gridYValue" class="value">150 px</span></label>
-            <input id="gridY" type="range" min="0" max="2000" value="150" />
-          </div>
+        <div class="field">
+          <label for="canvasFormat">Bildformat / Seitenverhältnis</label>
+          <select id="canvasFormat">
+            <option value="1200x1200">1:1 Quadrat</option>
+            <option value="1200x1500">4:5 Hochformat</option>
+            <option value="1200x1600">3:4 Hochformat</option>
+            <option value="1080x1920">9:16 Story</option>
+            <option value="1600x900">16:9 Querformat</option>
+            <option value="1600x1200">4:3 Querformat</option>
+            <option value="1414x2000">A4 Hochformat</option>
+            <option value="2000x1414">A4 Querformat</option>
+          </select>
         </div>
-
-        <div class="group">
-          <h2>Beschriftung</h2>
-
-          <div class="field">
-            <label for="labelSize">Schriftgröße <span id="labelSizeValue" class="value">22 px</span></label>
-            <input id="labelSize" type="range" min="10" max="48" value="22" />
-          </div>
-
-          <div class="field">
-            <label for="labelColor">Zahlenfarbe</label>
-            <input id="labelColor" type="color" value="#ffffff" />
-          </div>
-
-          <label class="check">
-            <input id="showLabels" type="checkbox" checked />
-            Zahlen anzeigen
-          </label>
-
-          <label class="check">
-            <input id="darkLabels" type="checkbox" />
-            Dunklen Hintergrund hinter Zahlen anzeigen
-          </label>
+        <div class="field">
+          <label>Bild zoomen: <span id="zoomValue">100 %</span></label>
+          <input id="imageZoom" type="range" min="10" max="400" value="100">
         </div>
-
-        <div class="group">
-          <h2>Aktionen</h2>
-          <div class="buttons">
-            <button id="resetImageButton" class="secondary" type="button">Bild zurücksetzen</button>
-            <button id="centerGridButton" class="secondary" type="button">Raster zentrieren</button>
-            <button id="downloadButton" class="primary" type="button">Als PNG herunterladen</button>
-            <button id="downloadSetButton" class="secondary" type="button">Set herunterladen</button>
-          </div>
-          <div id="status" class="status">Noch kein Bild geladen.</div>
+        <div class="field">
+          <label>Bild drehen: <span id="rotationValue">0°</span></label>
+          <input id="imageRotation" type="range" min="-180" max="180" value="0">
         </div>
-      </aside>
-
-      <section class="panel stage-wrap">
-        <canvas id="canvas" width="1200" height="1200" aria-label="Image Grid Canvas"></canvas>
+        <div class="mode-buttons">
+          <button id="imageMode" class="secondary active" type="button">Bild verschieben</button>
+          <button id="gridMode" class="secondary" type="button">Raster verschieben</button>
+        </div>
+        <div class="hint">Im Bild direkt ziehen. Im Rastermodus kannst du das Raster ziehen und am großen Griff unten rechts skalieren.</div>
       </section>
+
+      <section class="group">
+        <h2>Raster</h2>
+        <div class="field">
+          <label for="gridSize">Rastergröße</label>
+          <select id="gridSize">
+            <option value="2">2 × 2</option><option value="3">3 × 3</option>
+            <option value="4">4 × 4</option><option value="5">5 × 5</option>
+            <option value="6">6 × 6</option><option value="7">7 × 7</option>
+            <option value="8">8 × 8</option><option value="9">9 × 9</option>
+            <option value="10" selected>10 × 10</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Raster skalieren: <span id="cellSizeValue">90 px</span></label>
+          <input id="cellSize" type="range" min="30" max="220" value="90">
+        </div>
+        <button id="centerGrid" class="secondary" type="button">Raster zentrieren</button>
+      </section>
+
+      <section class="group">
+        <h2>Export</h2>
+        <div class="buttons">
+          <button id="download" class="primary" type="button">PNG</button>
+          <button id="downloadSet" class="secondary" type="button">Set herunterladen</button>
+        </div>
+        <div id="status" class="status">Noch kein Bild geladen.</div>
+      </section>
+
+      <details class="group">
+        <summary>Weitere Einstellungen</summary>
+        <div class="advanced-grid">
+          <div class="inline">
+            <div class="field"><label>Linienfarbe</label><input id="lineColor" type="color" value="#000000"></div>
+            <div class="field"><label>Feldfarbe</label><input id="fillColor" type="color" value="#ffffff"></div>
+          </div>
+          <div class="field"><label>Linien- & Zahlen-Deckkraft: <span id="lineOpacityValue">100 %</span></label><input id="lineOpacity" type="range" min="0" max="100" value="100"></div>
+          <div class="field"><label>Feld-Deckkraft: <span id="fillOpacityValue">45 %</span></label><input id="fillOpacity" type="range" min="0" max="100" value="45"></div>
+          <div class="field"><label>Linienstärke: <span id="lineWidthValue">2 px</span></label><input id="lineWidth" type="range" min="1" max="10" value="2"></div>
+          <div class="field"><label>Schriftgröße: <span id="labelSizeValue">22 px</span></label><input id="labelSize" type="range" min="10" max="48" value="22"></div>
+          <div class="field"><label>Zahlenfarbe</label><input id="labelColor" type="color" value="#ffffff"></div>
+          <label class="check"><input id="showLabels" type="checkbox" checked>Zahlen anzeigen</label>
+          <label class="check"><input id="darkLabels" type="checkbox">Hintergrund hinter Zahlen</label>
+          <button id="resetImage" class="secondary" type="button">Bild zurücksetzen</button>
+        </div>
+      </details>
+    </aside>
+
+    <section class="panel stage">
+      <canvas id="canvas" width="1200" height="1200"></canvas>
     </section>
+  </section>
 
-      <nav class="mobile-toolbar" aria-label="Mobile Schnellsteuerung">
-        <button id="mobileImageMode" class="secondary mobile-mode-button" type="button">Bild</button>
-        <button id="mobileGridMode" class="secondary mobile-mode-button active" type="button">Raster</button>
-        <button id="mobileMinus" class="secondary" type="button">−</button>
-        <button id="mobilePlus" class="secondary" type="button">+</button>
-        <button id="mobileCenter" class="secondary" type="button">Mitte</button>
-        <button id="mobileDownload" class="primary" type="button">PNG</button>
-      </nav>
-  </main>
+  <nav class="mobile-toolbar">
+    <button id="mImage" class="secondary active" type="button">Bild</button>
+    <button id="mGrid" class="secondary" type="button">Raster</button>
+    <button id="minus" class="secondary" type="button">−</button>
+    <button id="plus" class="secondary" type="button">+</button>
+    <button id="center" class="secondary" type="button">Mitte</button>
+    <button id="mDownload" class="primary" type="button">PNG</button>
+  </nav>
+</main>
 
-  <script>
-    (() => {
-      const MIN_CELL_SIZE = 30;
-      const MAX_CELL_SIZE = 220;
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const canvas = $('canvas'), ctx = canvas.getContext('2d');
+  const image = new Image();
+  let hasImage = false;
 
-      function handleSize() {
-        return window.matchMedia('(max-width: 980px)').matches ? 58 : 26;
-      }
+  const controls = {
+    imageInput:$('imageInput'), canvasFormat:$('canvasFormat'),
+    imageZoom:$('imageZoom'), imageRotation:$('imageRotation'),
+    gridSize:$('gridSize'), cellSize:$('cellSize'),
+    lineColor:$('lineColor'), fillColor:$('fillColor'),
+    lineOpacity:$('lineOpacity'), fillOpacity:$('fillOpacity'),
+    lineWidth:$('lineWidth'), labelSize:$('labelSize'),
+    labelColor:$('labelColor'), showLabels:$('showLabels'), darkLabels:$('darkLabels')
+  };
 
-      const canvas = document.getElementById('canvas');
-      const ctx = canvas.getContext('2d');
+  const state = {
+    width:1200,height:1200,mode:'image',
+    imageScale:1,imageRotation:0,imageX:0,imageY:0,baseScale:1,
+    gridSize:10,cellSize:90,gridX:150,gridY:150,
+    dragging:null,startX:0,startY:0,startGridX:0,startGridY:0,startCell:0,startImageX:0,startImageY:0
+  };
 
-      const imageInput = document.getElementById('imageInput');
-      const canvasFormat = document.getElementById('canvasFormat');
-      const imageZoom = document.getElementById('imageZoom');
-      const imageRotation = document.getElementById('imageRotation');
-      const imageOffsetX = document.getElementById('imageOffsetX');
-      const imageOffsetY = document.getElementById('imageOffsetY');
-      const dragMode = document.getElementById('dragMode');
-      const mobileRangeLock = document.getElementById('mobileRangeLock');
-      const mobileRangeLockRow = document.getElementById('mobileRangeLockRow');
+  const handleSize = () => matchMedia('(max-width:900px)').matches ? 62 : 28;
+  const gridPixels = () => state.gridSize * state.cellSize;
 
-      const gridSize = document.getElementById('gridSize');
-      const lineColor = document.getElementById('lineColor');
-      const fillColor = document.getElementById('fillColor');
-      const lineOpacity = document.getElementById('lineOpacity');
-      const fillOpacity = document.getElementById('fillOpacity');
-      const lineWidth = document.getElementById('lineWidth');
-      const cellSize = document.getElementById('cellSize');
-      const gridX = document.getElementById('gridX');
-      const gridY = document.getElementById('gridY');
+  function rgba(hex,a){
+    const h=hex.replace('#','');
+    return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;
+  }
 
-      const labelSize = document.getElementById('labelSize');
-      const labelColor = document.getElementById('labelColor');
-      const showLabels = document.getElementById('showLabels');
-      const darkLabels = document.getElementById('darkLabels');
+  function updateValues(){
+    $('zoomValue').textContent=Math.round(state.imageScale*100)+' %';
+    $('rotationValue').textContent=Math.round(state.imageRotation)+'°';
+    $('cellSizeValue').textContent=Math.round(state.cellSize)+' px';
+    $('lineOpacityValue').textContent=controls.lineOpacity.value+' %';
+    $('fillOpacityValue').textContent=controls.fillOpacity.value+' %';
+    $('lineWidthValue').textContent=controls.lineWidth.value+' px';
+    $('labelSizeValue').textContent=controls.labelSize.value+' px';
+    controls.imageZoom.value=Math.round(state.imageScale*100);
+    controls.imageRotation.value=Math.round(state.imageRotation);
+    controls.cellSize.value=Math.round(state.cellSize);
+  }
 
-      const resetImageButton = document.getElementById('resetImageButton');
-      const centerGridButton = document.getElementById('centerGridButton');
-      const downloadButton = document.getElementById('downloadButton');
-      const downloadSetButton = document.getElementById('downloadSetButton');
-      const mobileImageMode = document.getElementById('mobileImageMode');
-      const mobileGridMode = document.getElementById('mobileGridMode');
-      const mobileMinus = document.getElementById('mobileMinus');
-      const mobilePlus = document.getElementById('mobilePlus');
-      const mobileCenter = document.getElementById('mobileCenter');
-      const mobileDownload = document.getElementById('mobileDownload');
-      const status = document.getElementById('status');
+  function setMode(mode){
+    state.mode=mode;
+    ['imageMode','mImage'].forEach(id=>$(id).classList.toggle('active',mode==='image'));
+    ['gridMode','mGrid'].forEach(id=>$(id).classList.toggle('active',mode==='grid'));
+    $('status').textContent=mode==='image'?'Modus: Bild verschieben.':'Modus: Raster verschieben und skalieren.';
+  }
 
-      const valueEls = {
-        imageZoomValue: document.getElementById('imageZoomValue'),
-        imageRotationValue: document.getElementById('imageRotationValue'),
-        imageOffsetXValue: document.getElementById('imageOffsetXValue'),
-        imageOffsetYValue: document.getElementById('imageOffsetYValue'),
-        lineOpacityValue: document.getElementById('lineOpacityValue'),
-        fillOpacityValue: document.getElementById('fillOpacityValue'),
-        lineWidthValue: document.getElementById('lineWidthValue'),
-        cellSizeValue: document.getElementById('cellSizeValue'),
-        gridXValue: document.getElementById('gridXValue'),
-        gridYValue: document.getElementById('gridYValue'),
-        labelSizeValue: document.getElementById('labelSizeValue')
-      };
+  function fitBaseScale(){
+    if(hasImage) state.baseScale=Math.min(state.width/image.width,state.height/image.height);
+  }
 
-      const image = new Image();
-      let hasImage = false;
+  function clampGrid(){
+    const total=gridPixels();
+    state.gridX=Math.max(0,Math.min(state.gridX,Math.max(0,state.width-total)));
+    state.gridY=Math.max(0,Math.min(state.gridY,Math.max(0,state.height-total)));
+  }
 
-      const state = {
-        canvasWidth: 1200,
-        canvasHeight: 1200,
+  function centerGrid(){
+    state.gridX=Math.max(0,(state.width-gridPixels())/2);
+    state.gridY=Math.max(0,(state.height-gridPixels())/2);
+    clampGrid(); updateValues(); render();
+  }
 
-        imageScale: 1,
-        imageRotation: 0,
-        imageOffsetX: 0,
-        imageOffsetY: 0,
-        baseImageScale: 1,
+  function drawImage(){
+    ctx.fillStyle='#0b0c0f'; ctx.fillRect(0,0,state.width,state.height);
+    if(!hasImage){
+      ctx.fillStyle='#e8ebf2';ctx.font='700 48px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('Bild auswählen',state.width/2,state.height/2);
+      return;
+    }
+    const s=state.baseScale*state.imageScale;
+    ctx.save();
+    ctx.translate(state.width/2+state.imageX,state.height/2+state.imageY);
+    ctx.rotate(state.imageRotation*Math.PI/180);
+    ctx.drawImage(image,-image.width*s/2,-image.height*s/2,image.width*s,image.height*s);
+    ctx.restore();
+  }
 
-        gridSize: Number(gridSize.value),
-        gridX: Number(gridX.value),
-        gridY: Number(gridY.value),
-        cellSize: Number(cellSize.value),
+  function drawGrid(includeHandle=true){
+    const n=state.gridSize,cs=state.cellSize,gx=state.gridX,gy=state.gridY,total=n*cs;
+    ctx.save();
+    ctx.fillStyle=rgba(controls.fillColor.value,+controls.fillOpacity.value/100);
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++)ctx.fillRect(gx+c*cs,gy+r*cs,cs,cs);
 
-        dragging: null,
-        dragStartX: 0,
-        dragStartY: 0,
-        startGridX: 0,
-        startGridY: 0,
-        startCellSize: 0,
-        startImageOffsetX: 0,
-        startImageOffsetY: 0
-      };
+    const shared=+controls.lineOpacity.value/100;
+    ctx.strokeStyle=rgba(controls.lineColor.value,shared);
+    ctx.lineWidth=+controls.lineWidth.value;
+    for(let i=0;i<=n;i++){
+      const p=i*cs;
+      ctx.beginPath();ctx.moveTo(gx+p,gy);ctx.lineTo(gx+p,gy+total);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(gx,gy+p);ctx.lineTo(gx+total,gy+p);ctx.stroke();
+    }
 
-      function gw() { return state.gridSize * state.cellSize; }
-      function cw() { return state.canvasWidth; }
-      function ch() { return state.canvasHeight; }
-
-      function updateCanvasElement() {
-        canvas.width = cw();
-        canvas.height = ch();
-      }
-
-      function updateRangeLimits() {
-        const margin = Math.max(cw(), ch());
-        imageOffsetX.min = -margin;
-        imageOffsetX.max = margin;
-        imageOffsetY.min = -margin;
-        imageOffsetY.max = margin;
-
-        gridX.max = Math.max(cw(), 0);
-        gridY.max = Math.max(ch(), 0);
-      }
-
-      function updateReadouts() {
-        valueEls.imageZoomValue.textContent = `${Math.round(state.imageScale * 100)} %`;
-        valueEls.imageRotationValue.textContent = `${Math.round(state.imageRotation)}°`;
-        valueEls.imageOffsetXValue.textContent = `${Math.round(state.imageOffsetX)} px`;
-        valueEls.imageOffsetYValue.textContent = `${Math.round(state.imageOffsetY)} px`;
-        valueEls.lineOpacityValue.textContent = `${lineOpacity.value} %`;
-        valueEls.fillOpacityValue.textContent = `${fillOpacity.value} %`;
-        valueEls.lineWidthValue.textContent = `${lineWidth.value} px`;
-        valueEls.cellSizeValue.textContent = `${Math.round(state.cellSize)} px`;
-        valueEls.gridXValue.textContent = `${Math.round(state.gridX)} px`;
-        valueEls.gridYValue.textContent = `${Math.round(state.gridY)} px`;
-        valueEls.labelSizeValue.textContent = `${labelSize.value} px`;
-
-        imageZoom.value = Math.round(state.imageScale * 100);
-        imageRotation.value = Math.round(state.imageRotation);
-        imageOffsetX.value = Math.round(state.imageOffsetX);
-        imageOffsetY.value = Math.round(state.imageOffsetY);
-        gridSize.value = String(state.gridSize);
-        cellSize.value = Math.round(state.cellSize);
-        gridX.value = Math.round(state.gridX);
-        gridY.value = Math.round(state.gridY);
-      }
-
-      function hexToRgb(hex) {
-        const clean = hex.replace('#', '');
-        return {
-          r: parseInt(clean.slice(0, 2), 16),
-          g: parseInt(clean.slice(2, 4), 16),
-          b: parseInt(clean.slice(4, 6), 16)
-        };
-      }
-
-      function rgbaFromHex(hex, alpha) {
-        const rgb = hexToRgb(hex);
-        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
-      }
-
-      function drawPlaceholder() {
-        const gradient = ctx.createLinearGradient(0, 0, cw(), ch());
-        gradient.addColorStop(0, '#141721');
-        gradient.addColorStop(1, '#242836');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, cw(), ch());
-
-        const titleSize = Math.max(34, Math.min(cw(), ch()) * 0.045);
-        const subSize = Math.max(22, Math.min(cw(), ch()) * 0.025);
-
-        ctx.fillStyle = '#e8ebf2';
-        ctx.font = `700 ${titleSize}px system-ui, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('Bild auswählen', cw() / 2, ch() / 2 - titleSize * 0.6);
-
-        ctx.fillStyle = '#9fa6b5';
-        ctx.font = `${subSize}px system-ui, sans-serif`;
-        ctx.fillText(`${state.gridSize} × ${state.gridSize} · ${state.gridSize * state.gridSize} Felder`, cw() / 2, ch() / 2 + subSize * 0.9);
-      }
-
-      function resetImageTransform() {
-        state.imageScale = 1;
-        state.imageRotation = 0;
-        state.imageOffsetX = 0;
-        state.imageOffsetY = 0;
-        updateReadouts();
-      }
-
-      function fitImageBaseScale() {
-        if (!hasImage) return;
-        state.baseImageScale = Math.min(cw() / image.width, ch() / image.height);
-      }
-
-      function drawImageLayer() {
-        ctx.fillStyle = '#0b0c0f';
-        ctx.fillRect(0, 0, cw(), ch());
-        if (!hasImage) return;
-
-        const finalScale = state.baseImageScale * state.imageScale;
-        const drawWidth = image.width * finalScale;
-        const drawHeight = image.height * finalScale;
-
-        ctx.save();
-        ctx.translate(cw() / 2 + state.imageOffsetX, ch() / 2 + state.imageOffsetY);
-        ctx.rotate(state.imageRotation * Math.PI / 180);
-        ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-        ctx.restore();
-      }
-
-      function drawGrid(includeHandle = true) {
-        const gx = state.gridX;
-        const gy = state.gridY;
-        const cs = state.cellSize;
-        const count = state.gridSize;
-        const total = count * cs;
-
-        ctx.save();
-
-        ctx.fillStyle = rgbaFromHex(fillColor.value, Number(fillOpacity.value) / 100);
-        for (let row = 0; row < count; row++) {
-          for (let col = 0; col < count; col++) {
-            ctx.fillRect(gx + col * cs, gy + row * cs, cs, cs);
-          }
+    if(controls.showLabels.checked){
+      const size=+controls.labelSize.value;
+      ctx.font=`500 ${size}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';
+      for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+        const num=r*n+c+1,cx=gx+c*cs+cs/2,cy=gy+r*cs+cs/2;
+        if(controls.darkLabels.checked){
+          const m=ctx.measureText(String(num));
+          ctx.fillStyle='rgba(0,0,0,.55)';
+          ctx.fillRect(cx-(m.width+12)/2,cy-(size+10)/2,m.width+12,size+10);
         }
-
-        const sharedLineLabelOpacity = Number(lineOpacity.value) / 100;
-        ctx.strokeStyle = rgbaFromHex(lineColor.value, sharedLineLabelOpacity);
-        ctx.lineWidth = Number(lineWidth.value);
-
-        for (let i = 0; i <= count; i++) {
-          const p = i * cs;
-          ctx.beginPath();
-          ctx.moveTo(gx + p, gy);
-          ctx.lineTo(gx + p, gy + total);
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.moveTo(gx, gy + p);
-          ctx.lineTo(gx + total, gy + p);
-          ctx.stroke();
-        }
-
-        if (showLabels.checked) {
-          const size = Number(labelSize.value);
-          ctx.font = `500 ${size}px system-ui, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-
-          for (let row = 0; row < count; row++) {
-            for (let col = 0; col < count; col++) {
-              const num = row * count + col + 1;
-              const cx = gx + col * cs + cs / 2;
-              const cy = gy + row * cs + cs / 2;
-
-              if (darkLabels.checked) {
-                const metrics = ctx.measureText(String(num));
-                const rectW = metrics.width + 12;
-                const rectH = size + 10;
-                ctx.fillStyle = 'rgba(0,0,0,.55)';
-                ctx.fillRect(cx - rectW / 2, cy - rectH / 2, rectW, rectH);
-              }
-
-              ctx.lineWidth = Math.max(1, size / 14);
-              ctx.strokeStyle = `rgba(0,0,0,${Math.max(0.15, sharedLineLabelOpacity * 0.7)})`;
-              ctx.strokeText(String(num), cx, cy);
-              ctx.fillStyle = rgbaFromHex(labelColor.value, sharedLineLabelOpacity);
-              ctx.fillText(String(num), cx, cy);
-            }
-          }
-        }
-
-        if (includeHandle) {
-          const hs = handleSize();
-          const hx = gx + total - hs;
-          const hy = gy + total - hs;
-          ctx.fillStyle = 'rgba(255,255,255,.92)';
-          ctx.fillRect(hx, hy, hs, hs);
-          ctx.strokeStyle = 'rgba(0,0,0,.82)';
-          ctx.lineWidth = Math.max(2, hs / 18);
-          ctx.strokeRect(hx, hy, hs, hs);
-
-          ctx.beginPath();
-          ctx.moveTo(hx + hs * 0.22, hy + hs * 0.78);
-          ctx.lineTo(hx + hs * 0.78, hy + hs * 0.22);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(hx + hs * 0.42, hy + hs * 0.78);
-          ctx.lineTo(hx + hs * 0.78, hy + hs * 0.42);
-          ctx.stroke();
-        }
-
-        ctx.restore();
+        ctx.lineWidth=Math.max(1,size/14);
+        ctx.strokeStyle=`rgba(0,0,0,${Math.max(.15,shared*.7)})`;
+        ctx.strokeText(String(num),cx,cy);
+        ctx.fillStyle=rgba(controls.labelColor.value,shared);
+        ctx.fillText(String(num),cx,cy);
       }
+    }
 
-      function render(includeHandle = true) {
-        ctx.clearRect(0, 0, cw(), ch());
-        if (hasImage) drawImageLayer();
-        else drawPlaceholder();
-        drawGrid(includeHandle);
-      }
+    if(includeHandle){
+      const hs=handleSize(),hx=gx+total-hs,hy=gy+total-hs;
+      ctx.fillStyle='rgba(255,255,255,.94)';ctx.fillRect(hx,hy,hs,hs);
+      ctx.strokeStyle='rgba(0,0,0,.9)';ctx.lineWidth=Math.max(2,hs/18);ctx.strokeRect(hx,hy,hs,hs);
+      ctx.beginPath();ctx.moveTo(hx+hs*.2,hy+hs*.8);ctx.lineTo(hx+hs*.8,hy+hs*.2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(hx+hs*.42,hy+hs*.8);ctx.lineTo(hx+hs*.8,hy+hs*.42);ctx.stroke();
+    }
+    ctx.restore();
+  }
 
-      function clampGridPosition() {
-        const total = gw();
-        state.gridX = Math.max(0, Math.min(state.gridX, Math.max(0, cw() - total)));
-        state.gridY = Math.max(0, Math.min(state.gridY, Math.max(0, ch() - total)));
-      }
+  function render(includeHandle=true){
+    canvas.width=state.width;canvas.height=state.height;
+    drawImage();drawGrid(includeHandle);
+  }
 
-      function centerGrid() {
-        const total = gw();
-        state.gridX = Math.max(0, (cw() - total) / 2);
-        state.gridY = Math.max(0, (ch() - total) / 2);
-        clampGridPosition();
-        updateReadouts();
-        render();
-      }
+  function point(e){
+    const rect=canvas.getBoundingClientRect();
+    return {x:(e.clientX-rect.left)*canvas.width/rect.width,y:(e.clientY-rect.top)*canvas.height/rect.height};
+  }
 
-      function applyCanvasFormat(centerAfter = false) {
-        const [w, h] = canvasFormat.value.split('x').map(Number);
-        state.canvasWidth = w;
-        state.canvasHeight = h;
-        updateCanvasElement();
-        updateRangeLimits();
-        fitImageBaseScale();
-        if (centerAfter) {
-          centerGrid();
-        } else {
-          clampGridPosition();
-          updateReadouts();
-          render();
-        }
-      }
+  function onDown(e){
+    const p=point(e),total=gridPixels(),hs=handleSize(),pad=matchMedia('(max-width:900px)').matches?40:8;
+    state.startX=p.x;state.startY=p.y;
+    if(state.mode==='image'){
+      state.dragging='image';state.startImageX=state.imageX;state.startImageY=state.imageY;
+    }else{
+      const hx=state.gridX+total-hs,hy=state.gridY+total-hs;
+      const onHandle=p.x>=hx-pad&&p.x<=hx+hs+pad&&p.y>=hy-pad&&p.y<=hy+hs+pad;
+      const inside=p.x>=state.gridX&&p.x<=state.gridX+total&&p.y>=state.gridY&&p.y<=state.gridY+total;
+      if(onHandle){state.dragging='resize';state.startCell=state.cellSize;}
+      else if(inside){state.dragging='grid';state.startGridX=state.gridX;state.startGridY=state.gridY;}
+    }
+    if(state.dragging){canvas.classList.add('dragging');e.preventDefault();}
+  }
 
-      function pointFromEvent(event) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        return {
-          x: (event.clientX - rect.left) * scaleX,
-          y: (event.clientY - rect.top) * scaleY
-        };
-      }
+  function onMove(e){
+    if(!state.dragging)return;
+    const p=point(e),dx=p.x-state.startX,dy=p.y-state.startY;
+    if(state.dragging==='image'){state.imageX=state.startImageX+dx;state.imageY=state.startImageY+dy;}
+    if(state.dragging==='grid'){state.gridX=state.startGridX+dx;state.gridY=state.startGridY+dy;clampGrid();}
+    if(state.dragging==='resize'){state.cellSize=Math.max(30,Math.min(220,state.startCell+Math.max(dx,dy)/state.gridSize));clampGrid();}
+    updateValues();render();e.preventDefault();
+  }
+  function onUp(){state.dragging=null;canvas.classList.remove('dragging');}
 
-      function isInsideResizeHandle(x, y) {
-        const total = gw();
-        const hs = handleSize();
-        const hitPadding = window.matchMedia('(max-width: 980px)').matches ? 18 : 0;
-        const hx = state.gridX + total - hs;
-        const hy = state.gridY + total - hs;
-        return x >= hx - hitPadding &&
-               x <= hx + hs + hitPadding &&
-               y >= hy - hitPadding &&
-               y <= hy + hs + hitPadding;
-      }
+  function downloadCanvas(name){
+    return new Promise((resolve,reject)=>{
+      render(false);
+      canvas.toBlob(blob=>{
+        render(true);
+        if(!blob)return reject(new Error('PNG konnte nicht erstellt werden.'));
+        const a=document.createElement('a'),url=URL.createObjectURL(blob);
+        a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),500);resolve();
+      },'image/png');
+    });
+  }
 
-      function isInsideGrid(x, y) {
-        const total = gw();
-        return x >= state.gridX && x <= state.gridX + total && y >= state.gridY && y <= state.gridY + total;
-      }
+  controls.imageInput.addEventListener('change',e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const url=URL.createObjectURL(file);
+    image.onload=()=>{hasImage=true;fitBaseScale();state.imageScale=1;state.imageRotation=0;state.imageX=0;state.imageY=0;updateValues();render();$('status').textContent=file.name+' geladen.';URL.revokeObjectURL(url)};
+    image.src=url;
+  });
 
-      function beginDrag(event) {
-        const p = pointFromEvent(event);
-        state.dragStartX = p.x;
-        state.dragStartY = p.y;
+  controls.canvasFormat.addEventListener('change',()=>{
+    [state.width,state.height]=controls.canvasFormat.value.split('x').map(Number);
+    fitBaseScale();centerGrid();render();
+  });
+  controls.imageZoom.addEventListener('input',()=>{state.imageScale=+controls.imageZoom.value/100;updateValues();render()});
+  controls.imageRotation.addEventListener('input',()=>{state.imageRotation=+controls.imageRotation.value;updateValues();render()});
+  controls.gridSize.addEventListener('change',()=>{state.gridSize=+controls.gridSize.value;clampGrid();updateValues();render()});
+  controls.cellSize.addEventListener('input',()=>{state.cellSize=+controls.cellSize.value;clampGrid();updateValues();render()});
 
-        if (dragMode.value === 'image') {
-          state.dragging = 'image';
-          state.startImageOffsetX = state.imageOffsetX;
-          state.startImageOffsetY = state.imageOffsetY;
-        } else {
-          if (isInsideResizeHandle(p.x, p.y)) {
-            state.dragging = 'resize-grid';
-            state.startCellSize = state.cellSize;
-          } else if (isInsideGrid(p.x, p.y)) {
-            state.dragging = 'move-grid';
-            state.startGridX = state.gridX;
-            state.startGridY = state.gridY;
-          } else {
-            state.dragging = null;
-          }
-        }
+  ['lineColor','fillColor','lineOpacity','fillOpacity','lineWidth','labelSize','labelColor','showLabels','darkLabels'].forEach(id=>{
+    controls[id].addEventListener('input',()=>{updateValues();render()});
+  });
 
-        if (state.dragging) {
-          canvas.classList.add('dragging');
-          event.preventDefault();
-        }
-      }
+  $('imageMode').onclick=()=>setMode('image');$('gridMode').onclick=()=>setMode('grid');
+  $('mImage').onclick=()=>setMode('image');$('mGrid').onclick=()=>setMode('grid');
+  $('centerGrid').onclick=centerGrid;
+  $('center').onclick=()=>state.mode==='image'?(state.imageX=0,state.imageY=0,updateValues(),render()):centerGrid();
+  $('resetImage').onclick=()=>{state.imageScale=1;state.imageRotation=0;state.imageX=0;state.imageY=0;updateValues();render()};
+  $('minus').onclick=()=>{if(state.mode==='image')state.imageScale=Math.max(.1,state.imageScale-.1);else{state.cellSize=Math.max(30,state.cellSize-5);clampGrid()}updateValues();render()};
+  $('plus').onclick=()=>{if(state.mode==='image')state.imageScale=Math.min(4,state.imageScale+.1);else{state.cellSize=Math.min(220,state.cellSize+5);clampGrid()}updateValues();render()};
 
-      function duringDrag(event) {
-        if (!state.dragging) return;
-        const p = pointFromEvent(event);
-        const dx = p.x - state.dragStartX;
-        const dy = p.y - state.dragStartY;
+  $('download').onclick=async()=>{if(!hasImage)return $('status').textContent='Bitte zuerst ein Bild laden.';await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}.png`)};
+  $('mDownload').onclick=()=>$('download').click();
 
-        if (state.dragging === 'move-grid') {
-          state.gridX = state.startGridX + dx;
-          state.gridY = state.startGridY + dy;
-          clampGridPosition();
-        } else if (state.dragging === 'resize-grid') {
-          const delta = Math.max(dx, dy);
-          state.cellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, state.startCellSize + delta / state.gridSize));
-          clampGridPosition();
-        } else if (state.dragging === 'image') {
-          const margin = Math.max(cw(), ch());
-          state.imageOffsetX = Math.max(-margin, Math.min(margin, state.startImageOffsetX + dx));
-          state.imageOffsetY = Math.max(-margin, Math.min(margin, state.startImageOffsetY + dy));
-        }
+  $('downloadSet').onclick=async()=>{
+    if(!hasImage)return $('status').textContent='Bitte zuerst ein Bild laden.';
+    const original={fill:controls.fillOpacity.value,line:controls.lineOpacity.value,label:controls.labelColor.value};
+    try{
+      controls.fillOpacity.value='100';controls.lineOpacity.value='100';controls.labelColor.value='#000000';updateValues();render();
+      await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}-100.png`);
+      await new Promise(r=>setTimeout(r,150));
+      controls.fillOpacity.value='0';controls.lineOpacity.value='50';controls.labelColor.value='#ffffff';updateValues();render();
+      await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}-0.png`);
+      $('status').textContent='Set wurde erstellt.';
+    }finally{
+      controls.fillOpacity.value=original.fill;controls.lineOpacity.value=original.line;controls.labelColor.value=original.label;updateValues();render();
+    }
+  };
 
-        updateReadouts();
-        render();
-        event.preventDefault();
-      }
+  canvas.addEventListener('pointerdown',onDown);
+  window.addEventListener('pointermove',onMove);
+  window.addEventListener('pointerup',onUp);
+  window.addEventListener('pointercancel',onUp);
 
-      function endDrag() {
-        state.dragging = null;
-        canvas.classList.remove('dragging');
-      }
-
-      function downloadCanvas(filename) {
-        return new Promise((resolve, reject) => {
-          render(false);
-          canvas.toBlob(blob => {
-            render(true);
-            if (!blob) {
-              reject(new Error('PNG konnte nicht erzeugt werden.'));
-              return;
-            }
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 500);
-            resolve();
-          }, 'image/png');
-        });
-      }
-
-      imageInput.addEventListener('change', (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-          status.textContent = 'Bitte eine gültige Bilddatei auswählen.';
-          return;
-        }
-
-        const url = URL.createObjectURL(file);
-        image.onload = () => {
-          hasImage = true;
-          fitImageBaseScale();
-          resetImageTransform();
-          status.textContent = `${file.name} geladen · ${image.naturalWidth} × ${image.naturalHeight} px`;
-          render();
-          URL.revokeObjectURL(url);
-        };
-        image.onerror = () => {
-          status.textContent = 'Das Bild konnte nicht geladen werden.';
-          URL.revokeObjectURL(url);
-        };
-        image.src = url;
-      });
-
-      canvasFormat.addEventListener('change', () => {
-        applyCanvasFormat(true);
-        status.textContent = `Bildformat gewechselt: ${canvasFormat.options[canvasFormat.selectedIndex].text}`;
-      });
-
-      gridSize.addEventListener('change', () => {
-        state.gridSize = Number(gridSize.value);
-        clampGridPosition();
-        updateReadouts();
-        render();
-        status.textContent = `Rastergröße gewechselt: ${state.gridSize} × ${state.gridSize}`;
-      });
-
-      imageZoom.addEventListener('input', () => {
-        state.imageScale = Number(imageZoom.value) / 100;
-        updateReadouts();
-        render();
-      });
-
-      imageRotation.addEventListener('input', () => {
-        state.imageRotation = Number(imageRotation.value);
-        updateReadouts();
-        render();
-      });
-
-      imageOffsetX.addEventListener('input', () => {
-        state.imageOffsetX = Number(imageOffsetX.value);
-        updateReadouts();
-        render();
-      });
-
-      imageOffsetY.addEventListener('input', () => {
-        state.imageOffsetY = Number(imageOffsetY.value);
-        updateReadouts();
-        render();
-      });
-
-      cellSize.addEventListener('input', () => {
-        state.cellSize = Number(cellSize.value);
-        clampGridPosition();
-        updateReadouts();
-        render();
-      });
-
-      gridX.addEventListener('input', () => {
-        state.gridX = Number(gridX.value);
-        clampGridPosition();
-        updateReadouts();
-        render();
-      });
-
-      gridY.addEventListener('input', () => {
-        state.gridY = Number(gridY.value);
-        clampGridPosition();
-        updateReadouts();
-        render();
-      });
-
-      [lineColor, fillColor, lineOpacity, fillOpacity, lineWidth, labelSize, labelColor, showLabels, darkLabels]
-        .forEach(el => el.addEventListener('input', () => {
-          updateReadouts();
-          render();
-        }));
-
-      resetImageButton.addEventListener('click', () => {
-        resetImageTransform();
-        render();
-      });
-
-      centerGridButton.addEventListener('click', centerGrid);
-
-      downloadButton.addEventListener('click', async () => {
-        if (!hasImage) {
-          status.textContent = 'Bitte zuerst ein Bild laden.';
-          return;
-        }
-
-        try {
-          await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}.png`);
-          status.textContent = 'PNG wurde erstellt.';
-        } catch (error) {
-          status.textContent = error.message;
-        }
-      });
-
-      downloadSetButton.addEventListener('click', async () => {
-        if (!hasImage) {
-          status.textContent = 'Bitte zuerst ein Bild laden.';
-          return;
-        }
-
-        const originalFillOpacity = fillOpacity.value;
-        const originalLineOpacity = lineOpacity.value;
-        const originalLabelColor = labelColor.value;
-
-        try {
-          status.textContent = 'Set wird erstellt...';
-
-          fillOpacity.value = '100';
-          lineOpacity.value = '100';
-          labelColor.value = '#000000';
-          updateReadouts();
-          render();
-          await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}-100.png`);
-
-          await new Promise(resolve => setTimeout(resolve, 150));
-
-          fillOpacity.value = '0';
-          lineOpacity.value = '30';
-          labelColor.value = '#ffffff';
-          updateReadouts();
-          render();
-          await downloadCanvas(`image-grid-${state.gridSize}x${state.gridSize}-0.png`);
-
-          status.textContent = 'Set mit 100 % und 0 % Feld-Deckkraft wurde erstellt.';
-        } catch (error) {
-          status.textContent = error.message;
-        } finally {
-          fillOpacity.value = originalFillOpacity;
-          lineOpacity.value = originalLineOpacity;
-          labelColor.value = originalLabelColor;
-          updateReadouts();
-          render();
-        }
-      });
-
-
-      function applyMobileRangeLock() {
-        const isMobile = window.matchMedia('(max-width: 980px)').matches;
-        mobileRangeLockRow.style.display = isMobile ? 'flex' : 'none';
-        document.body.classList.toggle(
-          'mobile-ranges-locked',
-          isMobile && mobileRangeLock.checked
-        );
-      }
-
-      mobileRangeLock.addEventListener('change', applyMobileRangeLock);
-      window.addEventListener('resize', () => {
-        applyMobileRangeLock();
-        render();
-      });
-
-      function setMobileMode(mode) {
-        dragMode.value = mode;
-        mobileImageMode.classList.toggle('active', mode === 'image');
-        mobileGridMode.classList.toggle('active', mode === 'grid');
-        status.textContent = mode === 'image'
-          ? 'Mobilmodus: Bild verschieben und zoomen.'
-          : 'Mobilmodus: Raster verschieben und skalieren.';
-      }
-
-      mobileImageMode.addEventListener('click', () => setMobileMode('image'));
-      mobileGridMode.addEventListener('click', () => setMobileMode('grid'));
-
-      mobileMinus.addEventListener('click', () => {
-        if (dragMode.value === 'image') {
-          state.imageScale = Math.max(0.1, state.imageScale - 0.1);
-        } else {
-          state.cellSize = Math.max(MIN_CELL_SIZE, state.cellSize - 5);
-          clampGridPosition();
-        }
-        updateReadouts();
-        render();
-      });
-
-      mobilePlus.addEventListener('click', () => {
-        if (dragMode.value === 'image') {
-          state.imageScale = Math.min(4, state.imageScale + 0.1);
-        } else {
-          state.cellSize = Math.min(MAX_CELL_SIZE, state.cellSize + 5);
-          clampGridPosition();
-        }
-        updateReadouts();
-        render();
-      });
-
-      mobileCenter.addEventListener('click', () => {
-        if (dragMode.value === 'image') {
-          state.imageOffsetX = 0;
-          state.imageOffsetY = 0;
-          updateReadouts();
-          render();
-        } else {
-          centerGrid();
-        }
-      });
-
-      mobileDownload.addEventListener('click', () => downloadButton.click());
-
-      dragMode.addEventListener('change', () => setMobileMode(dragMode.value));
-
-      canvas.addEventListener('pointerdown', beginDrag);
-      window.addEventListener('pointermove', duringDrag);
-      window.addEventListener('pointerup', endDrag);
-      window.addEventListener('pointercancel', endDrag);
-
-      mobileRangeLock.checked = window.matchMedia('(max-width: 980px)').matches;
-      applyMobileRangeLock();
-      setMobileMode(dragMode.value);
-      updateCanvasElement();
-      updateRangeLimits();
-      updateReadouts();
-      centerGrid();
-      render();
-    })();
-  </script>
+  updateValues();centerGrid();setMode('image');render();
+})();
+</script>
 </body>
 </html>
