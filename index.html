@@ -189,9 +189,17 @@ details[open] summary{margin-bottom:12px}
   function effectiveLabelSize(){
     if(!controls.autoLabelSize.checked) return +controls.labelSize.value;
 
-    const digits = String(state.gridSize * state.gridSize).length;
-    const digitFactor = digits === 1 ? 0.42 : digits === 2 ? 0.34 : 0.28;
-    return Math.max(10, Math.min(42, Math.floor(state.cellSize * digitFactor)));
+    const maxLabel = String(state.gridSize * state.gridSize);
+    let size = Math.max(10, Math.floor(state.cellSize * 0.40));
+    const maxWidth = state.cellSize * 0.82;
+
+    while(size > 10){
+      ctx.font = `500 ${size}px system-ui`;
+      if(ctx.measureText(maxLabel).width <= maxWidth) break;
+      size--;
+    }
+
+    return size;
   }
 
   function updateValues(){
