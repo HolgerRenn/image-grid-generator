@@ -239,6 +239,17 @@
       }
       input[type="range"]{
         min-height:34px;
+        touch-action:pan-y;
+      }
+      body.mobile-ranges-locked input[type="range"]{
+        pointer-events:none;
+        opacity:.42;
+      }
+      body.mobile-ranges-locked .field:has(input[type="range"]) label::after{
+        content:"  · gesperrt";
+        font-size:.78rem;
+        font-weight:500;
+        color:var(--accent);
       }
       select,
       input[type="file"],
@@ -328,6 +339,11 @@
               <option value="image">Bild verschieben</option>
             </select>
           </div>
+
+          <label class="check" id="mobileRangeLockRow">
+            <input id="mobileRangeLock" type="checkbox" />
+            Schieberegler auf Mobilgeräten sperren
+          </label>
 
           <div class="hint">
             Im Canvas kannst du je nach Modus entweder das Raster ziehen bzw. unten rechts skalieren oder das Bild direkt verschieben.
@@ -449,7 +465,10 @@
     (() => {
       const MIN_CELL_SIZE = 30;
       const MAX_CELL_SIZE = 220;
-      const HANDLE_SIZE = 26;
+
+      function handleSize() {
+        return window.matchMedia('(max-width: 980px)').matches ? 58 : 26;
+      }
 
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
@@ -461,6 +480,8 @@
       const imageOffsetX = document.getElementById('imageOffsetX');
       const imageOffsetY = document.getElementById('imageOffsetY');
       const dragMode = document.getElementById('dragMode');
+      const mobileRangeLock = document.getElementById('mobileRangeLock');
+      const mobileRangeLockRow = document.getElementById('mobileRangeLockRow');
 
       const gridSize = document.getElementById('gridSize');
       const lineColor = document.getElementById('lineColor');
@@ -701,21 +722,22 @@
         }
 
         if (includeHandle) {
-          const hx = gx + total - HANDLE_SIZE;
-          const hy = gy + total - HANDLE_SIZE;
-          ctx.fillStyle = 'rgba(255,255,255,.88)';
-          ctx.fillRect(hx, hy, HANDLE_SIZE, HANDLE_SIZE);
-          ctx.strokeStyle = 'rgba(0,0,0,.75)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(hx, hy, HANDLE_SIZE, HANDLE_SIZE);
+          const hs = handleSize();
+          const hx = gx + total - hs;
+          const hy = gy + total - hs;
+          ctx.fillStyle = 'rgba(255,255,255,.92)';
+          ctx.fillRect(hx, hy, hs, hs);
+          ctx.strokeStyle = 'rgba(0,0,0,.82)';
+          ctx.lineWidth = Math.max(2, hs / 18);
+          ctx.strokeRect(hx, hy, hs, hs);
 
           ctx.beginPath();
-          ctx.moveTo(hx + 7, hy + HANDLE_SIZE - 7);
-          ctx.lineTo(hx + HANDLE_SIZE - 7, hy + 7);
+          ctx.moveTo(hx + hs * 0.22, hy + hs * 0.78);
+          ctx.lineTo(hx + hs * 0.78, hy + hs * 0.22);
           ctx.stroke();
           ctx.beginPath();
-          ctx.moveTo(hx + 13, hy + HANDLE_SIZE - 7);
-          ctx.lineTo(hx + HANDLE_SIZE - 7, hy + 13);
+          ctx.moveTo(hx + hs * 0.42, hy + hs * 0.78);
+          ctx.lineTo(hx + hs * 0.78, hy + hs * 0.42);
           ctx.stroke();
         }
 
@@ -772,9 +794,14 @@
 
       function isInsideResizeHandle(x, y) {
         const total = gw();
-        const hx = state.gridX + total - HANDLE_SIZE;
-        const hy = state.gridY + total - HANDLE_SIZE;
-        return x >= hx && x <= hx + HANDLE_SIZE && y >= hy && y <= hy + HANDLE_SIZE;
+        const hs = handleSize();
+        const hitPadding = window.matchMedia('(max-width: 980px)').matches ? 18 : 0;
+        const hx = state.gridX + total - hs;
+        const hy = state.gridY + total - hs;
+        return x >= hx - hitPadding &&
+               x <= hx + hs + hitPadding &&
+               y >= hy - hitPadding &&
+               y <= hy + hs + hitPadding;
       }
 
       function isInsideGrid(x, y) {
@@ -1014,6 +1041,21 @@
       });
 
 
+      function applyMobileRangeLock() {
+        const isMobile = window.matchMedia('(max-width: 980px)').matches;
+        mobileRangeLockRow.style.display = isMobile ? 'flex' : 'none';
+        document.body.classList.toggle(
+          'mobile-ranges-locked',
+          isMobile && mobileRangeLock.checked
+        );
+      }
+
+      mobileRangeLock.addEventListener('change', applyMobileRangeLock);
+      window.addEventListener('resize', () => {
+        applyMobileRangeLock();
+        render();
+      });
+
       function setMobileMode(mode) {
         dragMode.value = mode;
         mobileImageMode.classList.toggle('active', mode === 'image');
@@ -1068,6 +1110,8 @@
       window.addEventListener('pointerup', endDrag);
       window.addEventListener('pointercancel', endDrag);
 
+      mobileRangeLock.checked = window.matchMedia('(max-width: 980px)').matches;
+      applyMobileRangeLock();
       setMobileMode(dragMode.value);
       updateCanvasElement();
       updateRangeLimits();
