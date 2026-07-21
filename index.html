@@ -190,9 +190,84 @@
       cursor:grab;
     }
     canvas.dragging{cursor:grabbing}
+
+    .mobile-toolbar{
+      display:none;
+    }
+    .mobile-mode-button.active{
+      background:var(--accent);
+      color:#fff;
+      border-color:transparent;
+    }
     @media (max-width:980px){
-      .layout{grid-template-columns:1fr}
-      .controls{max-height:none}
+      body{padding-bottom:86px}
+      .app{
+        width:min(100% - 16px,1320px);
+        padding-top:12px;
+      }
+      h1{font-size:1.55rem}
+      .subtitle{
+        margin-bottom:12px;
+        font-size:.9rem;
+      }
+      .layout{
+        display:flex;
+        flex-direction:column;
+        gap:12px;
+      }
+      .stage-wrap{
+        order:1;
+        padding:8px;
+        position:sticky;
+        top:0;
+        z-index:5;
+        max-height:62vh;
+      }
+      canvas{
+        max-height:58vh;
+        width:auto;
+        max-width:100%;
+      }
+      .controls{
+        order:2;
+        max-height:none;
+        overflow:visible;
+        padding:10px;
+      }
+      .group{
+        padding:12px;
+      }
+      input[type="range"]{
+        min-height:34px;
+      }
+      select,
+      input[type="file"],
+      button{
+        min-height:48px;
+        font-size:16px;
+      }
+      .mobile-toolbar{
+        display:grid;
+        grid-template-columns:1fr 1fr .75fr .75fr .9fr .9fr;
+        gap:6px;
+        position:fixed;
+        left:8px;
+        right:8px;
+        bottom:8px;
+        z-index:50;
+        padding:8px;
+        border:1px solid var(--border);
+        border-radius:16px;
+        background:rgba(23,26,32,.97);
+        box-shadow:0 12px 32px rgba(0,0,0,.45);
+        backdrop-filter:blur(12px);
+      }
+      .mobile-toolbar button{
+        min-height:50px;
+        padding:8px 5px;
+        font-size:.82rem;
+        line-height:1.1;
+      }
     }
   </style>
 </head>
@@ -359,6 +434,15 @@
         <canvas id="canvas" width="1200" height="1200" aria-label="Image Grid Canvas"></canvas>
       </section>
     </section>
+
+      <nav class="mobile-toolbar" aria-label="Mobile Schnellsteuerung">
+        <button id="mobileImageMode" class="secondary mobile-mode-button" type="button">Bild</button>
+        <button id="mobileGridMode" class="secondary mobile-mode-button active" type="button">Raster</button>
+        <button id="mobileMinus" class="secondary" type="button">−</button>
+        <button id="mobilePlus" class="secondary" type="button">+</button>
+        <button id="mobileCenter" class="secondary" type="button">Mitte</button>
+        <button id="mobileDownload" class="primary" type="button">PNG</button>
+      </nav>
   </main>
 
   <script>
@@ -397,6 +481,12 @@
       const centerGridButton = document.getElementById('centerGridButton');
       const downloadButton = document.getElementById('downloadButton');
       const downloadSetButton = document.getElementById('downloadSetButton');
+      const mobileImageMode = document.getElementById('mobileImageMode');
+      const mobileGridMode = document.getElementById('mobileGridMode');
+      const mobileMinus = document.getElementById('mobileMinus');
+      const mobilePlus = document.getElementById('mobilePlus');
+      const mobileCenter = document.getElementById('mobileCenter');
+      const mobileDownload = document.getElementById('mobileDownload');
       const status = document.getElementById('status');
 
       const valueEls = {
@@ -923,11 +1013,62 @@
         }
       });
 
+
+      function setMobileMode(mode) {
+        dragMode.value = mode;
+        mobileImageMode.classList.toggle('active', mode === 'image');
+        mobileGridMode.classList.toggle('active', mode === 'grid');
+        status.textContent = mode === 'image'
+          ? 'Mobilmodus: Bild verschieben und zoomen.'
+          : 'Mobilmodus: Raster verschieben und skalieren.';
+      }
+
+      mobileImageMode.addEventListener('click', () => setMobileMode('image'));
+      mobileGridMode.addEventListener('click', () => setMobileMode('grid'));
+
+      mobileMinus.addEventListener('click', () => {
+        if (dragMode.value === 'image') {
+          state.imageScale = Math.max(0.1, state.imageScale - 0.1);
+        } else {
+          state.cellSize = Math.max(MIN_CELL_SIZE, state.cellSize - 5);
+          clampGridPosition();
+        }
+        updateReadouts();
+        render();
+      });
+
+      mobilePlus.addEventListener('click', () => {
+        if (dragMode.value === 'image') {
+          state.imageScale = Math.min(4, state.imageScale + 0.1);
+        } else {
+          state.cellSize = Math.min(MAX_CELL_SIZE, state.cellSize + 5);
+          clampGridPosition();
+        }
+        updateReadouts();
+        render();
+      });
+
+      mobileCenter.addEventListener('click', () => {
+        if (dragMode.value === 'image') {
+          state.imageOffsetX = 0;
+          state.imageOffsetY = 0;
+          updateReadouts();
+          render();
+        } else {
+          centerGrid();
+        }
+      });
+
+      mobileDownload.addEventListener('click', () => downloadButton.click());
+
+      dragMode.addEventListener('change', () => setMobileMode(dragMode.value));
+
       canvas.addEventListener('pointerdown', beginDrag);
       window.addEventListener('pointermove', duringDrag);
       window.addEventListener('pointerup', endDrag);
       window.addEventListener('pointercancel', endDrag);
 
+      setMobileMode(dragMode.value);
       updateCanvasElement();
       updateRangeLimits();
       updateReadouts();
